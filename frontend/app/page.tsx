@@ -40,6 +40,7 @@ const graphNodes = [
 export default function Home() {
   const [threats, setThreats] = useState(fallbackThreats);
   const [selected, setSelected] = useState(fallbackThreats[0]);
+  const [analysis, setAnalysis] = useState<any>(null);
 
   const [dashboard, setDashboard] = useState({
     risk_score: 87,
@@ -50,32 +51,81 @@ export default function Home() {
   });
 
   useEffect(() => {
-    const fetchDashboard = async () => {
-      try {
-        const response = await fetch(
-          "http://127.0.0.1:8000/api/dashboard"
-        );
+  const fetchDashboard = async () => {
+    try {
+      const [dashboardResponse, analysisResponse] = await Promise.all([
+        fetch("http://127.0.0.1:8000/api/dashboard"),
+        fetch("http://127.0.0.1:8000/api/web3/analyze"),
+      ]);
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch dashboard data");
-        }
-
-        const data = await response.json();
-
-        setDashboard(data);
-        setThreats(data.incidents);
-
-        if (data.incidents?.length > 0) {
-          setSelected(data.incidents[0]);
-        }
-      } catch (error) {
-        console.error("Dashboard API error:", error);
+      if (!dashboardResponse.ok) {
+        throw new Error("Failed to fetch dashboard data");
       }
-    };
 
-    fetchDashboard();
-  }, []);
+      if (!analysisResponse.ok) {
+        throw new Error("Failed to fetch Web3 analysis");
+      }
 
+      const dashboardData = await dashboardResponse.json();
+      const analysisData = await analysisResponse.json();
+
+      setDashboard(dashboardData);
+      setAnalysis(analysisData);
+      const analyzedTransactions = analysisData.transactions || [];
+
+const activeThreats = analyzedTransactions.filter(
+  (tx: any) => tx.risk_score > 0
+).length;
+
+const totalRisk = analyzedTransactions.reduce(
+  (sum: number, tx: any) => sum + tx.risk_score,
+  0
+);
+
+const calculatedRiskScore =
+  analyzedTransactions.length > 0
+    ? Math.min(
+        100,
+        Math.round(totalRisk / analyzedTransactions.length)
+      )
+    : 0;
+
+      const detectedThreats =
+        analysisData.transactions
+          ?.filter((tx: any) => tx.signals?.length > 0)
+          .map((tx: any, index: number) => ({
+            title: tx.signals[0]
+              .replaceAll("_", " ")
+              .replace(/\b\w/g, (char: string) => char.toUpperCase()),
+
+            level:
+              tx.risk_level === "HIGH"
+                ? "CRITICAL"
+                : tx.risk_level === "MEDIUM"
+                  ? "HIGH"
+                  : "MEDIUM",
+
+            detail: `${tx.value_eth.toFixed(4)} ETH transaction detected • Risk score ${tx.risk_score}`,
+
+            time: index === 0 ? "Just now" : `${index + 1} min ago`,
+          })) || [];
+
+      if (detectedThreats.length > 0) {
+        setThreats(detectedThreats);
+        setSelected(detectedThreats[0]);
+      } else {
+        setThreats(dashboardData.incidents || fallbackThreats);
+        setSelected(
+          dashboardData.incidents?.[0] || fallbackThreats[0]
+        );
+      }
+    } catch (error) {
+      console.error("Dashboard API error:", error);
+    }
+  };
+
+  fetchDashboard();
+}, []);
   return (
     <main className="min-h-screen bg-[#05070a] text-white">
       {/* HEADER */}
@@ -138,7 +188,7 @@ export default function Home() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Metric
             title="RISK SCORE"
-            value={String(dashboard.risk_score)}
+            value={String(calculatedRiskScore)}
             suffix="/100"
             status="HIGH RISK"
             statusColor="text-red-400"
@@ -234,14 +284,14 @@ export default function Home() {
               </div>
 
               <span className="text-xs text-cyan-400">
-                4 ACTIVE
+                {dashboard.active_threats} ACTIVE
               </span>
             </div>
 
             <div className="mt-5 space-y-2">
-              {threats.map((threat) => (
-                <button
-                  key={threat.title}
+              {threats.map((threat, index) => (
+  <button
+    key={`${threat.title}-${index}`}
                   onClick={() => setSelected(threat)}
                   className={`w-full rounded-xl border p-3 text-left transition ${
                     selected.title === threat.title

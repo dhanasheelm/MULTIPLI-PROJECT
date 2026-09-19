@@ -112,3 +112,112 @@ async def web3_status():
         "network": "Ethereum Mainnet",
         "latest_block": block_number,
     }
+@app.get("/api/web3/block")
+async def latest_block():
+    if not w3.is_connected():
+        return {
+            "status": "error",
+            "message": "Ethereum RPC connection failed",
+        }
+
+    block_number = w3.eth.block_number
+    block = w3.eth.get_block(block_number)
+
+    return {
+        "status": "connected",
+        "network": "Ethereum Mainnet",
+        "block_number": block_number,
+        "timestamp": block["timestamp"],
+        "transaction_count": len(block["transactions"]),
+        "gas_used": block["gasUsed"],
+        "gas_limit": block["gasLimit"],
+    }
+@app.get("/api/web3/transactions")
+async def latest_transactions():
+    if not w3.is_connected():
+        return {
+            "status": "error",
+            "message": "Ethereum RPC connection failed",
+        }
+
+    block_number = w3.eth.block_number
+    block = w3.eth.get_block(block_number, full_transactions=True)
+
+    transactions = []
+
+    for tx in block["transactions"][:10]:
+        transactions.append({
+            "hash": tx["hash"].hex(),
+            "from": tx["from"],
+            "to": tx["to"],
+            "value_eth": float(w3.from_wei(tx["value"], "ether")),
+            "gas": tx["gas"],
+        })
+
+    return {
+        "status": "connected",
+        "network": "Ethereum Mainnet",
+        "block_number": block_number,
+        "transaction_count": len(block["transactions"]),
+        "transactions": transactions,
+    }
+@app.get("/api/web3/analyze")
+async def analyze_transactions():
+    if not w3.is_connected():
+        return {
+            "status": "error",
+            "message": "Ethereum RPC connection failed",
+        }
+
+    block_number = w3.eth.block_number
+    block = w3.eth.get_block(block_number, full_transactions=True)
+
+    analyzed = []
+
+    for tx in block["transactions"][:10]:
+        value_eth = float(w3.from_wei(tx["value"], "ether"))
+
+        signals = []
+        risk_score = 0
+
+        if value_eth >= 10:
+            signals.append("HIGH_VALUE_TRANSFER")
+            risk_score += 30
+
+        if tx["gas"] >= 500000:
+            signals.append("HIGH_GAS_USAGE")
+            risk_score += 20
+
+        if tx["to"] is None:
+            signals.append("CONTRACT_CREATION")
+            risk_score += 15
+
+        if tx["input"] and tx["input"] != "0x":
+            signals.append("CONTRACT_INTERACTION")
+            risk_score += 10
+
+        if risk_score >= 40:
+            risk_level = "HIGH"
+        elif risk_score >= 20:
+            risk_level = "MEDIUM"
+        else:
+            risk_level = "LOW"
+
+        analyzed.append({
+            "hash": tx["hash"].hex(),
+            "from": tx["from"],
+            "to": tx["to"],
+            "value_eth": value_eth,
+            "gas": tx["gas"],
+            "risk_score": risk_score,
+            "risk_level": risk_level,
+            "signals": signals,
+        })
+
+    return {
+        "status": "connected",
+        "network": "Ethereum Mainnet",
+        "block_number": block_number,
+        "analyzed_transactions": len(analyzed),
+        "transactions": analyzed,
+    }
