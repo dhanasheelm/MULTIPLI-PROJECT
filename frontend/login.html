@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>web3-tracker | Login</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f7f7f8;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .card {
+      background: #ffffff;
+      border: 1px solid #e8e8ea;
+      border-radius: 14px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.06);
+    }
+
+    .brand {
+      text-align: center;
+      font-size: 24px;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 4px;
+      letter-spacing: -0.5px;
+    }
+
+    .brand span { color: #ff7a1a; }
+
+    .tagline {
+      text-align: center;
+      color: #8a8a92;
+      font-size: 13px;
+      margin-bottom: 32px;
+    }
+
+    h1 {
+      color: #1a1a1a;
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    label {
+      display: block;
+      color: #5a5a63;
+      font-size: 13px;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    input {
+      width: 100%;
+      padding: 13px 14px;
+      font-size: 15px;
+      background: #fafafa;
+      border: 1px solid #e2e2e5;
+      border-radius: 8px;
+      color: #1a1a1a;
+      margin-bottom: 18px;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    input::placeholder { color: #b0b0b6; }
+
+    input:focus {
+      border-color: #ff7a1a;
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(255, 122, 26, 0.1);
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      background: #ff7a1a;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    button:hover { background: #ff8c3d; }
+    button:active { transform: scale(0.98); }
+
+    #message {
+      text-align: center;
+      font-size: 13px;
+      margin-top: 16px;
+      min-height: 18px;
+    }
+
+    .toggle {
+      text-align: center;
+      margin-top: 22px;
+      font-size: 13px;
+      color: #8a8a92;
+      cursor: pointer;
+    }
+
+    .toggle strong { color: #ff7a1a; }
+    .toggle:hover strong { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">🔍 web3<span>-tracker</span></div>
+    <div class="tagline">Wallet risk & relationship detection</div>
+
+    <h1 id="formTitle">Welcome back</h1>
+
+    <label>Email</label>
+    <input type="email" id="email" placeholder="you@example.com">
+
+    <label>Password</label>
+    <input type="password" id="password" placeholder="••••••••">
+
+    <button onclick="submitForm()">Login</button>
+    <p id="message"></p>
+    <p class="toggle" onclick="toggleMode()">Don't have an account? <strong>Sign up</strong></p>
+  </div>
+
+  <script>
+    let mode = 'login';
+
+    function toggleMode() {
+      mode = mode === 'login' ? 'signup' : 'login';
+      document.getElementById('formTitle').textContent = mode === 'login' ? 'Welcome back' : 'Create your account';
+      document.querySelector('button').textContent = mode === 'login' ? 'Login' : 'Sign Up';
+      document.querySelector('.toggle').innerHTML = mode === 'login'
+        ? "Don't have an account? <strong>Sign up</strong>"
+        : "Already have an account? <strong>Login</strong>";
+    }
+
+    async function submitForm() {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const messageEl = document.getElementById('message');
+
+      if (!email || !password) {
+        messageEl.style.color = '#e0433b';
+        messageEl.textContent = 'Please fill in both fields.';
+        return;
+      }
+
+      const endpoint = mode === 'login' ? '/login' : '/signup';
+
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          messageEl.style.color = '#2e9e5b';
+          messageEl.textContent = 'Success! Logged in.';
+        } else {
+          messageEl.style.color = '#e0433b';
+          messageEl.textContent = data.error || 'Something went wrong.';
+        }
+      } catch (err) {
+        messageEl.style.color = '#e0433b';
+        messageEl.textContent = 'Could not reach the server.';
+      }
+    }
+  </script>
+</body>
+</html>
