@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-const threats = [
+const fallbackThreats = [
   {
     level: "CRITICAL",
     title: "Oracle Price Deviation",
@@ -38,7 +38,43 @@ const graphNodes = [
 ];
 
 export default function Home() {
-  const [selected, setSelected] = useState(threats[0]);
+  const [threats, setThreats] = useState(fallbackThreats);
+  const [selected, setSelected] = useState(fallbackThreats[0]);
+
+  const [dashboard, setDashboard] = useState({
+    risk_score: 87,
+    active_threats: 4,
+    exposure: 2400000,
+    protocol_health: 72,
+    threat_level: "HIGH",
+  });
+
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        const response = await fetch(
+          "http://127.0.0.1:8000/api/dashboard"
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch dashboard data");
+        }
+
+        const data = await response.json();
+
+        setDashboard(data);
+        setThreats(data.incidents);
+
+        if (data.incidents?.length > 0) {
+          setSelected(data.incidents[0]);
+        }
+      } catch (error) {
+        console.error("Dashboard API error:", error);
+      }
+    };
+
+    fetchDashboard();
+  }, []);
 
   return (
     <main className="min-h-screen bg-[#05070a] text-white">
@@ -102,7 +138,7 @@ export default function Home() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Metric
             title="RISK SCORE"
-            value="87"
+            value={String(dashboard.risk_score)}
             suffix="/100"
             status="HIGH RISK"
             statusColor="text-red-400"
@@ -110,7 +146,7 @@ export default function Home() {
 
           <Metric
             title="ACTIVE THREATS"
-            value="04"
+            value={String(dashboard.active_threats).padStart(2, "0")}
             suffix=""
             status="2 CRITICAL"
             statusColor="text-red-400"
@@ -118,7 +154,7 @@ export default function Home() {
 
           <Metric
             title="EXPOSURE"
-            value="$2.4M"
+            value={`$${(dashboard.exposure / 1000000).toFixed(1)}M`}
             suffix=""
             status="AT RISK"
             statusColor="text-orange-400"
@@ -126,7 +162,7 @@ export default function Home() {
 
           <Metric
             title="PROTOCOL HEALTH"
-            value="72"
+            value={String(dashboard.protocol_health)}
             suffix="%"
             status="WARNING"
             statusColor="text-yellow-400"
