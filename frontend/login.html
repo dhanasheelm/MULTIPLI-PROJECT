@@ -156,7 +156,9 @@
         return;
       }
 
-      const endpoint = mode === 'login' ? '/login' : '/signup';
+      const endpoint = mode === 'login'
+  ? 'http://localhost:3000/login'
+  : 'http://localhost:3000/signup';
 
       try {
         const response = await fetch(endpoint, {

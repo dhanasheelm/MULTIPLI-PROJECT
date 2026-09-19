@@ -1,5 +1,7 @@
+from fastapi.staticfiles import StaticFiles
 from datetime import datetime
 import os
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -322,3 +324,5 @@ async def analyze_transactions():
         "analyzed_transactions": len(analyzed),
         "transactions": analyzed,
     }
+FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
+app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
