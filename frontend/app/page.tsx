@@ -42,6 +42,7 @@ export default function Home() {
   const [selected, setSelected] = useState(fallbackThreats[0]);
   const [analysis, setAnalysis] = useState<any>(null);
   const [calculatedRiskScore, setCalculatedRiskScore] = useState(0);
+  const [oracleStatus, setOracleStatus] = useState<any>(null);
 
   const [dashboard, setDashboard] = useState({
     risk_score: 87,
@@ -54,11 +55,15 @@ export default function Home() {
   useEffect(() => {
   const fetchDashboard = async () => {
     try {
-      const [dashboardResponse, analysisResponse] = await Promise.all([
-        fetch("http://127.0.0.1:8000/api/dashboard"),
-        fetch("http://127.0.0.1:8000/api/web3/analyze"),
-      ]);
-
+      const [
+  dashboardResponse,
+  analysisResponse,
+  oracleResponse,
+] = await Promise.all([
+  fetch("http://127.0.0.1:8000/api/dashboard"),
+  fetch("http://127.0.0.1:8000/api/web3/analyze"),
+  fetch("http://127.0.0.1:8000/api/web3/oracle"),
+]);
       if (!dashboardResponse.ok) {
         throw new Error("Failed to fetch dashboard data");
       }
@@ -66,9 +71,15 @@ export default function Home() {
       if (!analysisResponse.ok) {
         throw new Error("Failed to fetch Web3 analysis");
       }
+      if (!oracleResponse.ok) {
+  throw new Error("Failed to fetch oracle status");
+}
 
       const dashboardData = await dashboardResponse.json();
       const analysisData = await analysisResponse.json();
+      const oracleData = await oracleResponse.json();
+
+setOracleStatus(oracleData);
 
       setDashboard(dashboardData);
       setAnalysis(analysisData);
@@ -140,7 +151,7 @@ const nextRiskScore =
 
             <div>
               <h1 className="text-xl font-bold tracking-[0.3em]">
-                AGISMESH
+                AGISHMESH
               </h1>
               <p className="text-[9px] tracking-[0.25em] text-gray-500">
                 WEB3 SECURITY INTELLIGENCE
@@ -220,6 +231,55 @@ const nextRiskScore =
             statusColor="text-yellow-400"
           />
         </div>
+        {oracleStatus && (
+  <section className="mt-5 rounded-2xl border border-white/10 bg-[#090d12] p-5">
+    <p className="text-[10px] tracking-[0.25em] text-gray-500">
+      ORACLE MANIPULATION MONITOR
+    </p>
+
+    <div className="mt-3 grid gap-4 md:grid-cols-4">
+      <Metric
+        title="ORACLE STATUS"
+        value={oracleStatus.status === "connected" ? "LIVE" : "ERROR"}
+        suffix=""
+        status={oracleStatus.signal || "UNKNOWN"}
+        statusColor={
+          oracleStatus.anomaly_detected
+            ? "text-red-400"
+            : "text-green-400"
+        }
+      />
+
+      <Metric
+        title="ETH/USD PRICE"
+        value={`$${Number(oracleStatus.price_usd || 0).toFixed(2)}`}
+        suffix=""
+        status="CHAINLINK"
+        statusColor="text-cyan-400"
+      />
+
+      <Metric
+        title="DATA AGE"
+        value={String(oracleStatus.age_seconds || 0)}
+        suffix="s"
+        status={oracleStatus.severity || "LOW"}
+        statusColor="text-yellow-400"
+      />
+
+      <Metric
+        title="ANOMALY"
+        value={oracleStatus.anomaly_detected ? "YES" : "NO"}
+        suffix=""
+        status={oracleStatus.severity || "LOW"}
+        statusColor={
+          oracleStatus.anomaly_detected
+            ? "text-red-400"
+            : "text-green-400"
+        }
+      />
+    </div>
+  </section>
+)}
 
         {/* RADAR + INCIDENTS */}
         <div className="mt-5 grid gap-5 xl:grid-cols-[1.5fr_1fr]">

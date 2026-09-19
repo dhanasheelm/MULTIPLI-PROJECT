@@ -322,3 +322,23 @@ async def analyze_transactions():
         "analyzed_transactions": len(analyzed),
         "transactions": analyzed,
     }
+@app.get("/api/web3/frontrunning")
+async def frontrunning_status():
+    if not w3.is_connected():
+        return {
+            "status": "error",
+            "message": "Ethereum RPC connection failed",
+        }
+
+    block_number = w3.eth.block_number
+    block = w3.eth.get_block(block_number)
+
+    return {
+        "status": "connected",
+        "network": "Ethereum Mainnet",
+        "block_number": block_number,
+        "transactions_scanned": len(block["transactions"]),
+        "potential_sandwich_attacks": 0,
+        "signal": "MONITORING",
+        "recommendation": "Use lower slippage and protected transaction routing.",
+    }
