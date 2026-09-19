@@ -41,6 +41,7 @@ export default function Home() {
   const [threats, setThreats] = useState(fallbackThreats);
   const [selected, setSelected] = useState(fallbackThreats[0]);
   const [analysis, setAnalysis] = useState<any>(null);
+  const [calculatedRiskScore, setCalculatedRiskScore] = useState(0);
 
   const [dashboard, setDashboard] = useState({
     risk_score: 87,
@@ -82,13 +83,14 @@ const totalRisk = analyzedTransactions.reduce(
   0
 );
 
-const calculatedRiskScore =
+const nextRiskScore =
   analyzedTransactions.length > 0
     ? Math.min(
         100,
         Math.round(totalRisk / analyzedTransactions.length)
       )
     : 0;
+    setCalculatedRiskScore(nextRiskScore);
 
       const detectedThreats =
         analysisData.transactions

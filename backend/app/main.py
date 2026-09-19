@@ -14,7 +14,44 @@ ALCHEMY_RPC_URL = os.getenv("ALCHEMY_RPC_URL")
 ETHERSCAN_API_KEY = os.getenv("ETHERSCAN_API_KEY")
 
 w3 = Web3(Web3.HTTPProvider(ALCHEMY_RPC_URL))
+ORACLE_ABI = [
+    {
+        "inputs": [],
+        "name": "decimals",
+        "outputs": [{"internalType": "uint8", "name": "", "type": "uint8"}],
+        "stateMutability": "view",
+        "type": "function",
+    },
+    {
+        "inputs": [],
+        "name": "description",
+        "outputs": [{"internalType": "string", "name": "", "type": "string"}],
+        "stateMutability": "view",
+        "type": "function",
+    },
+    {
+        "inputs": [],
+        "name": "latestRoundData",
+        "outputs": [
+            {"internalType": "uint80", "name": "roundId", "type": "uint80"},
+            {"internalType": "int256", "name": "answer", "type": "int256"},
+            {"internalType": "uint256", "name": "startedAt", "type": "uint256"},
+            {"internalType": "uint256", "name": "updatedAt", "type": "uint256"},
+            {"internalType": "uint80", "name": "answeredInRound", "type": "uint80"},
+        ],
+        "stateMutability": "view",
+        "type": "function",
+    },
+]
 
+ETH_USD_ORACLE = Web3.to_checksum_address(
+    "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"
+)
+
+oracle = w3.eth.contract(
+    address=ETH_USD_ORACLE,
+    abi=ORACLE_ABI
+)
 app = FastAPI(
     title="AegisMesh API",
     description="Web3 Security & Protocol Health Intelligence Platform",
@@ -161,6 +198,70 @@ async def latest_transactions():
         "transaction_count": len(block["transactions"]),
         "transactions": transactions,
     }
+@app.get("/api/web3/oracle")
+async def oracle_status():
+
+    if not w3.is_connected():
+        return {
+            "status": "error",
+            "message": "Ethereum RPC connection failed",
+        }
+
+    try:
+        decimals = oracle.functions.decimals().call()
+
+        (
+            round_id,
+            answer,
+            started_at,
+            updated_at,
+            answered_in_round,
+        ) = oracle.functions.latestRoundData().call()
+
+        price = answer / (10 ** decimals)
+
+        current_block = w3.eth.block_number
+
+        age_seconds = int(datetime.utcnow().timestamp()) - updated_at
+
+        deviation_threshold = 0.5
+
+        if age_seconds > 3600:
+            anomaly = True
+            severity = "HIGH"
+            signal = "STALE_ORACLE_DATA"
+
+        elif price <= 0:
+            anomaly = True
+            severity = "CRITICAL"
+            signal = "INVALID_ORACLE_PRICE"
+
+        else:
+            anomaly = False
+            severity = "LOW"
+            signal = "NORMAL"
+
+        return {
+            "status": "connected",
+            "network": "Ethereum Mainnet",
+            "oracle": "Chainlink ETH/USD",
+            "oracle_address": ETH_USD_ORACLE,
+            "price_usd": round(price, 2),
+            "round_id": round_id,
+            "updated_at": updated_at,
+            "age_seconds": age_seconds,
+            "deviation_threshold_percent": deviation_threshold,
+            "anomaly_detected": anomaly,
+            "severity": severity,
+            "signal": signal,
+            "block_number": current_block,
+        }
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e),
+        }
 @app.get("/api/web3/analyze")
 async def analyze_transactions():
     if not w3.is_connected():
