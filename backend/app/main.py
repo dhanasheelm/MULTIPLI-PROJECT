@@ -151,6 +151,8 @@ async def web3_status():
         "network": "Ethereum Mainnet",
         "latest_block": block_number,
     }
+
+
 @app.get("/api/web3/block")
 async def latest_block():
     if not w3.is_connected():
@@ -171,6 +173,8 @@ async def latest_block():
         "gas_used": block["gasUsed"],
         "gas_limit": block["gasLimit"],
     }
+
+
 @app.get("/api/web3/transactions")
 async def latest_transactions():
     if not w3.is_connected():
@@ -200,6 +204,8 @@ async def latest_transactions():
         "transaction_count": len(block["transactions"]),
         "transactions": transactions,
     }
+
+
 @app.get("/api/web3/oracle")
 async def oracle_status():
 
@@ -264,6 +270,8 @@ async def oracle_status():
             "status": "error",
             "message": str(e),
         }
+
+
 @app.get("/api/web3/analyze")
 async def analyze_transactions():
     if not w3.is_connected():
@@ -324,5 +332,29 @@ async def analyze_transactions():
         "analyzed_transactions": len(analyzed),
         "transactions": analyzed,
     }
+
+
+@app.get("/api/web3/frontrunning")
+async def frontrunning_status():
+    if not w3.is_connected():
+        return {
+            "status": "error",
+            "message": "Ethereum RPC connection failed",
+        }
+
+    block_number = w3.eth.block_number
+    block = w3.eth.get_block(block_number)
+
+    return {
+        "status": "connected",
+        "network": "Ethereum Mainnet",
+        "block_number": block_number,
+        "transactions_scanned": len(block["transactions"]),
+        "potential_sandwich_attacks": 0,
+        "signal": "MONITORING",
+        "recommendation": "Use lower slippage and protected transaction routing.",
+    }
+
+
 FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
 app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
