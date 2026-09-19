@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from web3 import Web3
 import requests
 
-load_dotenv()
+load_dotenv(override=True)
 
 ALCHEMY_RPC_URL = os.getenv("ALCHEMY_RPC_URL")
 ETHERSCAN_API_KEY = os.getenv("ETHERSCAN_API_KEY")
